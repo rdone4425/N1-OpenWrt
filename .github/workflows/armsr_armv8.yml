@@ -19,6 +19,7 @@ env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: openwrt-25.12
   TZ: Asia/Shanghai
+  USE_CCACHE: 1
 
 jobs:
   build:
@@ -76,6 +77,13 @@ jobs:
       uses: P3TERX/ssh2actions@main
       if: github.event.inputs.ssh == 'true'
 
+    - name: Restore build cache
+      uses: actions/cache@v4
+      with:
+        path: openwrt/.ccache
+        key: openwrt-ccache-${{ runner.os }}-${{ github.run_id }}
+        restore-keys: openwrt-ccache-${{ runner.os }}-
+
     - name: Download package
       working-directory: ./openwrt
       run: |
@@ -120,3 +128,10 @@ jobs:
       with:
         keep_latest: 2
         delete_tags : true
+
+    - name: Save build cache
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        path: openwrt/.ccache
+        key: openwrt-ccache-${{ runner.os }}-${{ github.run_id }}
