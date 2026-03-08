@@ -72,6 +72,14 @@ jobs:
         rm -rf openwrt/files openwrt/.config
         mv armsr/armv8/N1/files armsr/armv8/N1/.config openwrt/
 
+    - name: Restore compile cache
+      uses: actions/cache@v4
+      with:
+        path: openwrt/dl
+        key: openwrt-dl-${{ github.run_id }}
+        restore-keys: |
+          openwrt-dl-
+
     - name: SSH connect to Actions
       uses: P3TERX/ssh2actions@main
       if: github.event.inputs.ssh == 'true'
