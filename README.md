@@ -1,9 +1,10 @@
 # 项目简介
-本固件适配斐讯 N1 旁路由模式，追求轻量，不具备 PPPoE、WiFi 相关功能。<br>
+本固件适配斐讯 N1 旁路由模式，追求轻量。<br>
 固件仅包含默认皮肤以及下列 luci-app：<br>
 [luci-app-amlogic](https://github.com/ophub/luci-app-amlogic)：系统更新、文件传输、CPU 调频等<br>
 [luci-app-passwall](https://github.com/Openwrt-Passwall/openwrt-passwall)：科学上网<br>
 [luci-app-podman](https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman)：容器管理<br>
+luci-app-wireless：WiFi 网络管理（支持USB无线网卡）<br>
 luci-app-samba4：存储共享
 ***
 # 致谢
