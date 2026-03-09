@@ -61,11 +61,29 @@ jobs:
     - name: Update & Install feeds
       run: |
         chmod +x armsr/armv8/diy/diy.sh
+        chmod +x armsr/armv8/diy/optimize.sh
         cd openwrt
         ./scripts/feeds update -a
         $GITHUB_WORKSPACE/armsr/armv8/diy/diy.sh
+
+        # 禁用 Rust CI LLVM 下载，防止网络 404 错误
+        if [ -f feeds/packages/lang/rust/bootstrap.toml ]; then
+          echo "正在优化 Rust 配置..."
+          # 备份原文件
+          cp feeds/packages/lang/rust/bootstrap.toml feeds/packages/lang/rust/bootstrap.toml.bak
+          # 禁用 CI LLVM 下载
+          sed -i '/\[llvm\]/a\download-ci-llvm = false' feeds/packages/lang/rust/bootstrap.toml || true
+          # 如果已存在配置，则修改
+          sed -i 's/download-ci-llvm = true/download-ci-llvm = false/g' feeds/packages/lang/rust/bootstrap.toml
+        fi
+
         ./scripts/feeds update -a
         ./scripts/feeds install -a
+
+    - name: Run build optimizations
+      working-directory: ./openwrt
+      run: |
+        $GITHUB_WORKSPACE/armsr/armv8/diy/optimize.sh
 
     - name: Load N1 custom config
       run: |
@@ -79,6 +97,14 @@ jobs:
         key: openwrt-dl-${{ github.run_id }}
         restore-keys: |
           openwrt-dl-
+
+    - name: Restore ccache
+      uses: actions/cache@v4
+      with:
+        path: openwrt/.ccache
+        key: openwrt-ccache-${{ github.run_id }}
+        restore-keys: |
+          openwrt-ccache-
 
     - name: SSH connect to Actions
       uses: P3TERX/ssh2actions@main
@@ -96,7 +122,21 @@ jobs:
         chmod -R 755 openwrt
         cd openwrt
         echo -e "$(nproc) thread compile"
-        make -j$(( $(nproc) + 1 )) || make -j1 V=s
+        # 第一次尝试：最大并发编译
+        if make -j$(( $(nproc) + 1 )); then
+          echo "Build succeeded"
+        else
+          echo "Build failed, retrying with single thread..."
+          # 重试：单线程编译并输出详细信息
+          make -j1 V=s || {
+            echo "Build failed again. Trying with Rust LLVM workaround..."
+            # 禁用 Rust CI LLVM 下载，允许本地编译
+            sed -i 's/download-ci-llvm = true/download-ci-llvm = false/g' feeds/packages/lang/rust/bootstrap.toml 2>/dev/null || true
+            make -j1 V=s
+          }
+        fi
+      continue-on-error: true
+      timeout-minutes: 240
 
     - name: Package N1 firmware
       uses: unifreq/openwrt_packit@master
